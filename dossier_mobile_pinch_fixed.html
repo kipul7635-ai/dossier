@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Dossier</title>
+<style>
+:root{
+  --bg:#080808; --panel:#141414; --panel2:#1b1b1b; --line:#2a2a2a;
+  --txt:#e9e6e1; --dim:#8b8680; --accent:#d9c9a5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font:14px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit}
+.hidden{display:none !important}
+.dim{color:var(--dim)}
+
+/* ---------- shared screens ---------- */
+.screen{position:fixed;inset:0;z-index:50}
+.btn{padding:9px 18px;border:1px solid var(--line);border-radius:8px;background:var(--panel);
+  transition:.15s;color:var(--txt)}
+.btn:hover{background:var(--panel2);border-color:#3a3a3a}
+.btn.primary{background:#e9e6e1;color:#0b0b0b;border-color:#e9e6e1;font-weight:600}
+.btn.primary:hover{background:#fff}
+
+/* ---------- landing ---------- */
+#landing{background:#050505;display:flex;flex-direction:column;align-items:center}
+.landing-top{padding-top:14vh;display:flex;gap:12px}
+.saved{margin-top:52px;width:min(560px,86vw)}
+.saved-h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  margin-bottom:10px;text-align:center}
+.saved-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid #1e1e1e;
+  border-radius:9px;margin-bottom:8px;background:#0d0d0d;cursor:pointer;transition:.15s}
+.saved-row:hover{background:#131313;border-color:#2e2e2e}
+.saved-row .dot{font-size:15px;opacity:.6}
+.saved-row .meta{flex:1;font-size:13px;line-height:1.35}
+.saved-row .meta small{color:var(--dim);font-size:11px}
+.saved-row .del{color:#5a5a5a;padding:4px 8px;border-radius:6px}
+.saved-row .del:hover{color:#ff6b60;background:#1c1010}
+
+/* ---------- gate ---------- */
+#gate{background:rgba(4,4,4,.94);display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);z-index:80}
+.gate-card{width:min(400px,88vw);background:#101010;border:1px solid #232323;border-radius:14px;
+  padding:26px 24px 22px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.gate-card h1{margin:0 0 4px;font-size:17px;font-weight:600;letter-spacing:.01em}
+.gate-card p{margin:0 0 18px;font-size:12.5px}
+.gate-card input[type=password]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2a2a2a;
+  background:#0a0a0a;color:var(--txt);outline:none;margin-bottom:9px}
+.gate-card input[type=password]:focus{border-color:#4a4a4a}
+.gate-card .row{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}
+.err{color:#ff6b60;font-size:12px;min-height:16px}
+
+/* ---------- table ---------- */
+#app{position:fixed;inset:0;overflow:hidden;background:#0b0906}
+#world{position:absolute;inset:0;transform-origin:0 0;overflow:visible;touch-action:none;overscroll-behavior:contain;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 42%, rgba(150,110,70,.13), transparent 72%),
+    repeating-linear-gradient(91deg,#171109 0 2px,#1b1409 2px 6px,#130e08 6px 9px,#181109 9px 13px),
+    #100b06;
+  background-size:auto, 260px 260px, auto;
+  background-blend-mode:normal, overlay, normal;}
+#stage{position:absolute;inset:0;overflow:visible}
+#vignette{position:absolute;inset:0;pointer-events:none;z-index:5;
+  background:radial-gradient(ellipse 78% 68% at 50% 46%, transparent 40%, rgba(0,0,0,.55) 100%)}
+
+/* ---------- objects ---------- */
+.obj{position:absolute;left:0;top:0;transform-origin:50% 50%;will-change:transform;
+  --inv:1;}
+.obj .ui{display:none}
+.obj.sel .ui{display:block}
+.h{position:absolute;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:50%;
+  background:#fff;border:1.5px solid #111;transform:scale(var(--inv));transform-origin:50% 50%;
+  box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.h.rot{left:50%;top:0;cursor:grab;
+  transform:scale(var(--inv)) translateY(-26px)}
+.h.br{left:100%;top:100%;cursor:nwse-resize}
+
+/* paper */
+.obj.sheet .paper{position:absolute;inset:0;border-radius:2px;background-color:#f2ede1;
+  background-image:repeating-linear-gradient(to bottom,transparent 0 27px,rgba(96,116,148,.16) 27px 28px);
+  background-position:0 40px;
+  box-shadow:0 22px 48px rgba(0,0,0,.6),0 3px 8px rgba(0,0,0,.45),
+             inset 0 0 70px rgba(140,115,75,.07);
+  overflow:hidden}
+.obj.sheet .paper::before{content:"";position:absolute;left:38px;top:0;bottom:0;width:1px;
+  background:rgba(200,90,80,.28)}
+.obj.sheet .paper::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg,rgba(255,255,255,.28),transparent 42%);pointer-events:none}
+.obj .txt{position:absolute;inset:0;padding:34px 40px 30px 54px;
+  font:15px/28px ui-serif,Georgia,"Times New Roman",serif;color:#241f18;
+  white-space:pre-wrap;overflow-y:auto;overflow-x:hidden;outline:none;pointer-events:none;
+  word-break:break-word;overscroll-behavior:contain}
+.obj.editing .txt{pointer-events:auto;cursor:text;user-select:text}
+.obj.sel.editing .paper{outline:2px solid rgba(217,201,165,.9);outline-offset:0}
+
+/* images */
+.obj.image .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  border-radius:1px;pointer-events:none;user-select:none;
+  box-shadow:0 20px 44px rgba(0,0,0,.62),0 2px 7px rgba(0,0,0,.5),0 0 0 6px rgba(255,255,255,.94),
+             0 0 0 7px rgba(0,0,0,.10)}
+
+/* ink layer */
+.ink{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+body.marker .ink{pointer-events:auto;cursor:crosshair}
+.obj.sel .ink{}
+
+/* paperclip badge */
+.clip{position:absolute;top:0;right:0;transform:scale(var(--inv)) translate(20px,-20px);
+  transform-origin:100% 0;background:#191919;color:#dedad4;border:1px solid #3a3a3a;
+  border-radius:99px;padding:3px 10px;font-size:11.5px;line-height:1.4;white-space:nowrap;
+  cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.5);user-select:none}
+.clip:hover{background:#2a2a2a}
+
+/* ---------- toolbar ---------- */
+#bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:12px;
+  background:rgba(18,18,18,.86);border:1px solid #262626;backdrop-filter:blur(14px);
+  box-shadow:0 10px 34px rgba(0,0,0,.5);max-width:calc(100vw - 24px)}
+#bar .spacer{width:6px}
+#bar .sep{width:1px;height:20px;background:#2e2e2e;margin:0 3px}
+.tool{padding:6px 11px;border-radius:7px;font-size:12.5px;color:#cfcac3;white-space:nowrap;
+  transition:.12s;border:1px solid transparent}
+.tool:hover{background:#232323;color:#fff}
+.tool.on{background:#2c2c2c;color:#fff;border-color:#4a4a4a}
+.title{background:none;border:0;outline:none;color:var(--txt);font:600 13.5px/1 inherit;
+  padding:6px 8px;border-radius:7px;width:150px;min-width:60px}
+.title:hover{background:#1e1e1e}
+.title:focus{background:#1e1e1e}
+.swatches{display:flex;gap:4px;padding:0 4px}
+.sw{width:17px;height:17px;border-radius:50%;border:2px solid transparent;cursor:pointer;
+  transition:.12s;box-shadow:inset 0 0 0 1px rgba(0,0,0,.5)}
+.sw.on{border-color:#fff;transform:scale(1.12)}
+
+.status{position:absolute;bottom:22px;left:50%;transform:translateX(-50%) translateY(14px);
+  z-index:25;background:rgba(20,20,20,.92);border:1px solid #303030;border-radius:9px;
+  padding:7px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.25s}
+.status.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:15;
+  font-size:12px;color:#6f6a63;pointer-events:none;transition:opacity .6s;
+  background:rgba(0,0,0,.35);padding:6px 14px;border-radius:8px;white-space:nowrap}
+.hint.gone{opacity:0}
+
+/* ---------- lightbox ---------- */
+.lightbox{position:fixed;inset:0;z-index:90;background:rgba(3,3,3,.93);
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:40px}
+.lb-inner{max-width:100%;max-height:100%;overflow:auto;display:flex;flex-wrap:wrap;gap:16px;
+  justify-content:center;align-items:center}
+.lb-inner img{max-width:min(88vw,760px);max-height:76vh;object-fit:contain;border-radius:4px;
+  box-shadow:0 20px 60px rgba(0,0,0,.8)}
+.lb-close{position:absolute;top:20px;right:24px;font-size:26px;color:#888;line-height:1}
+.lb-close:hover{color:#fff}
+</style>
+</head>
+<body>
+
+<!-- ============ LANDING ============ -->
+<div id="landing" class="screen">
+  <div class="landing-top">
+    <button id="btnCreate" class="btn primary">Create</button>
+    <button id="btnImport" class="btn">Import</button>
+  </div>
+  <div id="savedList" class="saved"></div>
+  <input type="file" id="fileImport" accept=".dossier" hidden />
+</div>
+
+<!-- ============ GATE ============ -->
+<div id="gate" class="screen hidden">
+  <form id="gateForm" class="gate-card" autocomplete="off">
+    <h1 id="gateTitle">Passphrase</h1>
+    <p id="gateSub" class="dim"></p>
+    <input id="gatePass" type="password" placeholder="Passphrase" autocomplete="new-password" />
+    <input id="gatePass2" type="password" placeholder="Confirm passphrase" autocomplete="new-password" class="hidden" />
+    <div id="gateErr" class="err"></div>
+    <div class="row">
+      <button type="button" id="gateCancel" class="btn">Cancel</button>
+      <button type="submit" id="gateOk" class="btn primary">Unlock</button>
+    </div>
+  </form>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <div id="world"><div id="stage"></div></div>
+  <div id="vignette"></div>
+
+  <header id="bar">
+    <input id="title" class="title" value="Untitled" spellcheck="false" />
+    <div class="sep"></div>
+    <button id="btnSheet" class="tool">▤ Sheet</button>
+    <button id="btnImage" class="tool">▣ Image</button>
+    <div class="sep"></div>
+    <button id="btnMarker" class="tool">✎ Marker</button>
+    <div id="swatches" class="swatches"></div>
+    <button id="btnErase" class="tool">⌫</button>
+    <div class="sep"></div>
+    <button id="btnReset" class="tool">⤢</button>
+    <button id="btnExport" class="tool">⭳ Export</button>
+    <button id="btnLock" class="tool">Lock</button>
+  </header>
+
+  <div id="status" class="status"></div>
+  <div id="hint" class="hint">Drag to pan · pinch to zoom · double-click a sheet to write</div>
+  <input type="file" id="fileImage" accept="image/*" multiple hidden />
+</div>
+
+<!-- ============ LIGHTBOX ============ -->
+<div id="lightbox" class="lightbox hidden">
+  <button class="lb-close" id="lbClose">×</button>
+  <div class="lb-inner" id="lbInner"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ══════════════════════════════════════════════════════════
+   UTIL
+   ══════════════════════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+const uid = () => crypto.randomUUID
+  ? crypto.randomUUID()
+  : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+
+function concat(...arrs) {
+  let n = 0; for (const a of arrs) n += a.length;
+  const out = new Uint8Array(n); let o = 0;
+  for (const a of arrs) { out.set(a, o); o += a.length; }
+  return out;
+}
+function u32le(v) { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v, true); return b; }
+function rd32(b, o) { return new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(o, true); }
+function fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(2) + ' MB';
+}
+
+/* ══════════════════════════════════════════════════════════
+   CRYPTO  —  DSR1 container
+   ══════════════════════════════════════════════════════════
+   0..3   magic "DSR1"
+   4      version 1
+   5      kdf id (1 = PBKDF2-SHA256)
+   6..7   reserved
+   8..11  iterations (u32 LE)
+   12..27 salt (16)
+   28..43 fileId (16)
+   -- AAD base = bytes 0..43  (never changes for a dossier) --
+   44..47 manifestCtLen (u32 LE)
+   48..59 manifest IV (12)
+   60..   manifest ciphertext||tag
+          per asset: [12B IV][ctLen bytes  ciphertext||tag]
+   ══════════════════════════════════════════════════════════ */
+const MAGIC = [0x44, 0x53, 0x52, 0x31];
+const ITER_DEFAULT = 310000, ITER_MIN = 100000, ITER_MAX = 2000000;
+
+async function deriveKey(pass, salt, iterations) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+async function seal(key, aadBase, tag, plain) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const aad = tag ? concat(aadBase, enc.encode(tag)) : aadBase;
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad }, key, plain));
+  return { iv, ct };
+}
+async function open(key, aadBase, tag, iv, ct) {
+  const aad = tag ? concat(aadBase, enc.encode(tag)) : aadBase;
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: aad }, key, ct));
+}
+
+function buildHeaderBase(iterations, salt, fileId) {
+  const h = new Uint8Array(44);
+  h.set(MAGIC, 0);
+  h[4] = 1; h[5] = 1; h[6] = 0; h[7] = 0;
+  h.set(u32le(iterations), 8);
+  h.set(salt, 12);
+  h.set(fileId, 28);
+  return h;
+}
+
+function parseHeader(buf) {
+  if (buf.length < 61) throw new Error('File too small');
+  for (let i = 0; i < 4; i++) if (buf[i] !== MAGIC[i]) throw new Error('Not a .dossier file');
+  if (buf[4] !== 1) throw new Error('Unsupported version ' + buf[4]);
+  if (buf[5] !== 1) throw new Error('Unsupported KDF');
+  const iterations = rd32(buf, 8);
+  if (iterations < ITER_MIN || iterations > ITER_MAX) throw new Error('Refusing KDF parameters');
+  const manifestCtLen = rd32(buf, 44);
+  if (60 + manifestCtLen > buf.length) throw new Error('Truncated file');
+  return {
+    iterations,
+    salt: buf.slice(12, 28),
+    fileId: buf.slice(28, 44),
+    aadBase: buf.slice(0, 44),
+    manifestCtLen,
+    manifestIv: buf.slice(48, 60),
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   INDEXEDDB
+   ══════════════════════════════════════════════════════════ */
+let _db = null;
+function db() {
+  if (_db) return _db;
+  _db = new Promise((res, rej) => {
+    const r = indexedDB.open('dossier-db', 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('dossiers')) d.createObjectStore('dossiers', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('assets')) d.createObjectStore('assets', { keyPath: ['dossierId', 'assetId'] });
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return _db;
+}
+async function idbAll(store) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const r = d.transaction(store, 'readonly').objectStore(store).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbPut(store, val) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(store, 'readwrite');
+    t.objectStore(store).put(val);
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+async function idbAssetsOf(dossierId) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const out = [];
+    const rq = d.transaction('assets', 'readonly').objectStore('assets')
+      .openCursor(IDBKeyRange.bound([dossierId, ''], [dossierId, '\uffff']));
+    rq.onsuccess = () => { const c = rq.result; if (c) { out.push(c.value); c.continue(); } else res(out); };
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbDeleteDossier(id) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(['dossiers', 'assets'], 'readwrite');
+    t.objectStore('dossiers').delete(id);
+    const rq = t.objectStore('assets').openCursor(IDBKeyRange.bound([id, ''], [id, '\uffff']));
+    rq.onsuccess = () => { const c = rq.result; if (c) { c.delete(); c.continue(); } };
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+async function idbDeleteAsset(dossierId, assetId) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction('assets', 'readwrite');
+    t.objectStore('assets').delete([dossierId, assetId]);
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════ */
+const S = {
+  key: null,
+  id: null,
+  name: 'Untitled',
+  createdAt: null,
+  headerBase: null,
+  objects: [],
+  assets: new Map(),       // assetId -> {id,kind,mime,w,h,iv,ct,url}
+  savedAssetIds: new Set(),
+  view: { x: 0, y: 0, z: 1 },
+  sel: null,
+  mode: 'select',          // 'select' | 'marker' | 'erase'
+  inkColor: '#e0402f',
+  inkW: 5,
+  zTop: 1,
+};
+let drag = null;
+const activeTouches = new Map();
+let pinch = null;
+let saveTimer = null;
+let spaceDown = false;
+
+const byId = id => S.objects.find(o => o.id === id);
+const stage = () => $('#stage');
+
+/* ══════════════════════════════════════════════════════════
+   SAVE (debounced, encrypted, to IndexedDB)
+   ══════════════════════════════════════════════════════════ */
+function scheduleSave() {
+  if (!S.key) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 700);
+}
+
+function buildManifest() {
+  const m = {
+    v: 1,
+    name: S.name,
+    created: S.createdAt,
+    objects: S.objects.map(o => {
+      const base = {
+        id: o.id, type: o.type, x: o.x, y: o.y, rot: o.rot, scale: o.scale,
+        z: o.z, w: o.w, h: o.h, ink: o.ink,
+      };
+      if (o.type === 'sheet') { base.text = o.text || ''; base.attached = o.attached || []; }
+      else { base.assetId = o.assetId; }
+      return base;
+    }),
+    assets: [],
+  };
+  for (const [id, a] of S.assets) {
+    m.assets.push({ id, kind: a.kind, mime: a.mime, w: a.w, h: a.h, ctLen: a.ct.length });
+  }
+  return m;
+}
+
+async function save() {
+  if (!S.key || !S.id) return;
+  try {
+    const manifest = buildManifest();
+    const plain = enc.encode(JSON.stringify(manifest));
+    const { iv, ct } = await seal(S.key, S.headerBase, '', plain);
+
+    const header = new Uint8Array(60);
+    header.set(S.headerBase, 0);
+    header.set(u32le(ct.length), 44);
+    header.set(iv, 48);
+
+    let size = header.length + ct.length;
+    for (const a of S.assets.values()) size += 12 + a.ct.length;
+
+    await idbPut('dossiers', {
+      id: S.id, header, manifestIv: iv, manifestCt: ct,
+      createdAt: S.createdAt, updatedAt: Date.now(), size,
+    });
+
+    const now = new Set();
+    for (const [id, a] of S.assets) {
+      now.add(id);
+      await idbPut('assets', { dossierId: S.id, assetId: id, iv: a.iv, ct: a.ct });
+    }
+    for (const old of S.savedAssetIds) {
+      if (!now.has(old)) await idbDeleteAsset(S.id, old);
+    }
+    S.savedAssetIds = now;
+  } catch (e) {
+    console.error('save failed', e);
+    flash('Save failed');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   VIEW / TRANSFORMS
+   ══════════════════════════════════════════════════════════ */
+function applyView() {
+  $('#world').style.transform = `translate(${S.view.x}px,${S.view.y}px) scale(${S.view.z})`;
+  for (const o of S.objects) if (o.el) syncInv(o);
+}
+function syncInv(o) {
+  o.el.style.setProperty('--inv', (1 / (o.scale * S.view.z)).toFixed(5));
+}
+function screenToWorld(sx, sy) {
+  return { x: (sx - S.view.x) / S.view.z, y: (sy - S.view.y) / S.view.z };
+}
+function worldToScreen(wx, wy) {
+  return { x: S.view.x + wx * S.view.z, y: S.view.y + wy * S.view.z };
+}
+function worldToLocal(o, wx, wy) {
+  const dx = wx - o.x, dy = wy - o.y;
+  const c = Math.cos(o.rot * Math.PI / 180), s = Math.sin(o.rot * Math.PI / 180);
+  return {
+    x: (dx * c + dy * s) / o.scale + o.w / 2,
+    y: (-dx * s + dy * c) / o.scale + o.h / 2,
+  };
+}
+function viewCenterWorld() {
+  return screenToWorld(innerWidth / 2, innerHeight / 2);
+}
+
+function place(o) {
+  if (!o.el) return;
+  o.el.style.transform = `translate(${o.x}px,${o.y}px) rotate(${o.rot}deg) scale(${o.scale})`;
+  o.el.style.zIndex = o.z;
+  o.el.classList.toggle('sel', S.sel === o);
+  o.el.classList.toggle('editing', !!o.editing);
+  syncInv(o);
+}
+
+function select(o) {
+  if (S.sel === o) return;
+  if (S.sel) { S.sel.editing = false; if (S.sel.el) { S.sel.el.classList.remove('editing'); const t = S.sel.el.querySelector('.txt'); if (t) t.contentEditable = 'false'; } }
+  S.sel = o;
+  if (o) { o.z = ++S.zTop; }
+  for (const x of S.objects) place(x);
+  if (o && o.el) o.el.classList.add('sel');
+}
+function deselect() { if (S.sel) select(null); }
+
+/* ══════════════════════════════════════════════════════════
+   OBJECT BUILDING
+   ══════════════════════════════════════════════════════════ */
+function buildObj(o) {
+  const e = el('div', 'obj ' + o.type);
+  e.dataset.id = o.id;
+
+  if (o.type === 'sheet') {
+    e.innerHTML =
+      '<div class="paper"></div>' +
+      '<div class="txt" spellcheck="false"></div>' +
+      '<svg class="ink" preserveAspectRatio="none"></svg>' +
+      '<div class="clip hidden"></div>' +
+      '<div class="ui"><div class="h rot"></div><div class="h br"></div></div>';
+    const t = e.querySelector('.txt');
+    t.textContent = o.text || '';
+    t.contentEditable = 'false';
+    t.addEventListener('input', () => { o.text = t.innerText; scheduleSave(); });
+    t.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.preventDefault(); exitEdit(o); } });
+    e.querySelector('.clip').addEventListener('pointerdown', ev => ev.stopPropagation());
+    e.querySelector('.clip').addEventListener('click', ev => { ev.stopPropagation(); openLightbox(o); });
+  } else {
+    e.innerHTML =
+      '<img class="photo" draggable="false" alt="" />' +
+      '<svg class="ink" preserveAspectRatio="none"></svg>' +
+      '<div class="ui"><div class="h rot"></div><div class="h br"></div></div>';
+    const a = S.assets.get(o.assetId);
+    if (a && a.url) e.querySelector('.photo').src = a.url;
+  }
+
+  e.style.width = o.w + 'px';
+  e.style.height = o.h + 'px';
+  e.style.left = (-o.w / 2) + 'px';
+  e.style.top = (-o.h / 2) + 'px';
+
+  o.el = e;
+  stage().appendChild(e);
+  renderInk(o);
+  place(o);
+  refreshClip(o);
+}
+
+function removeObj(o) {
+  if (o.el) o.el.remove();
+  S.objects = S.objects.filter(x => x !== o);
+  if (S.sel === o) S.sel = null;
+  scheduleSave();
+}
+
+function refreshClip(o) {
+  if (o.type !== 'sheet' || !o.el) return;
+  const c = o.el.querySelector('.clip');
+  const n = (o.attached || []).length;
+  if (n) { c.textContent = '📎 ' + n; c.classList.remove('hidden'); }
+  else c.classList.add('hidden');
+}
+
+function renderInk(o) {
+  const svg = o.el && o.el.querySelector('.ink');
+  if (!svg) return;
+  svg.setAttribute('viewBox', `0 0 ${o.w} ${o.h}`);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const NS = 'http://www.w3.org/2000/svg';
+  for (const st of o.ink) {
+    if (!st.p || st.p.length < 2) continue;
+    const pl = document.createElementNS(NS, 'polyline');
+    const pts = [];
+    for (let i = 0; i < st.p.length; i += 2) pts.push(st.p[i] + ',' + st.p[i + 1]);
+    if (pts.length === 1) pts.push(pts[0]);
+    pl.setAttribute('points', pts.join(' '));
+    pl.setAttribute('fill', 'none');
+    pl.setAttribute('stroke', st.c);
+    pl.setAttribute('stroke-width', st.w);
+    pl.setAttribute('stroke-linecap', 'round');
+    pl.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(pl);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   OBJECT CREATION
+   ══════════════════════════════════════════════════════════ */
+function addSheet(wx, wy) {
+  const o = {
+    id: uid(), type: 'sheet',
+    x: wx, y: wy, rot: 0, scale: 1, z: ++S.zTop,
+    w: 660, h: 934, text: '', ink: [], attached: [], el: null,
+  };
+  S.objects.push(o);
+  buildObj(o);
+  select(o);
+  scheduleSave();
+  return o;
+}
+
+function addImageObj(asset, wx, wy) {
+  const maxW = 480;
+  const s = Math.min(1, maxW / asset.w);
+  const o = {
+    id: uid(), type: 'image',
+    x: wx, y: wy,
+    rot: (Math.random() - 0.5) * 5,
+    scale: s, z: ++S.zTop,
+    w: asset.w, h: asset.h,
+    assetId: asset.id, ink: [], el: null,
+  };
+  S.objects.push(o);
+  buildObj(o);
+  select(o);
+  scheduleSave();
+  return o;
+}
+
+/* ══════════════════════════════════════════════════════════
+   POINTER INTERACTION
+   ══════════════════════════════════════════════════════════ */
+
+// Keep pinch calculations in screen coordinates. The world point under the
+// midpoint remains fixed there while the midpoint moves and the distance changes.
+function touchMidpoint() {
+  const pts = [...activeTouches.values()];
+  return {
+    x: (pts[0].x + pts[1].x) / 2,
+    y: (pts[0].y + pts[1].y) / 2
+  };
+}
+function touchDistance() {
+  const pts = [...activeTouches.values()];
+  return Math.max(1, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
+}
+function beginPinch() {
+  const mid = touchMidpoint();
+  const world = screenToWorld(mid.x, mid.y);
+  pinch = {
+    distance: touchDistance(),
+    zoom: S.view.z,
+    worldX: world.x,
+    worldY: world.y
+  };
+  // A pinch always takes priority over an in-progress object drag/draw.
+  drag = null;
+  document.body.style.cursor = '';
+}
+function updatePinch() {
+  if (!pinch || activeTouches.size < 2) return;
+  const mid = touchMidpoint();
+  const z = clamp(pinch.zoom * touchDistance() / pinch.distance, 0.06, 8);
+  S.view.z = z;
+  S.view.x = mid.x - pinch.worldX * z;
+  S.view.y = mid.y - pinch.worldY * z;
+  applyView();
+}
+function resumeOneFingerPan() {
+  if (activeTouches.size !== 1) return;
+  const [id, p] = activeTouches.entries().next().value;
+  drag = { type: 'pan', pointerId: id, sx: p.x, sy: p.y, vx: S.view.x, vy: S.view.y };
+}
+
+function onPointerDown(e) {
+  if (e.pointerType === 'touch') {
+    e.preventDefault();
+    activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activeTouches.size === 2) {
+      beginPinch();
+      return;
+    }
+    if (activeTouches.size > 2) return;
+  }
+  if (e.button === 1 || (e.button === 0 && spaceDown)) { startPan(e); return; }
+  if (e.button !== 0) return;
+
+  const handle = e.target.closest('.h');
+  const objEl = e.target.closest('.obj');
+
+  if (handle && objEl) {
+    const o = byId(objEl.dataset.id);
+    if (!o) return;
+    select(o);
+    if (handle.classList.contains('rot')) startRotate(e, o);
+    else startScale(e, o);
+    e.preventDefault();
+    return;
+  }
+
+  if (objEl) {
+    const o = byId(objEl.dataset.id);
+    if (!o) return;
+    const onInk = e.target.classList.contains('ink');
+
+    if (S.mode === 'marker' && onInk) { select(o); startDraw(e, o); e.preventDefault(); return; }
+    if (S.mode === 'erase' && onInk) { select(o); startErase(e, o); e.preventDefault(); return; }
+    if (o.editing && e.target.closest('.txt')) return;
+
+    select(o);
+    startMove(e, o);
+    e.preventDefault();
+    return;
+  }
+
+  deselect();
+  startPan(e);
+}
+
+function startPan(e) {
+  drag = { type: 'pan', sx: e.clientX, sy: e.clientY, vx: S.view.x, vy: S.view.y };
+  document.body.style.cursor = 'grabbing';
+}
+function startMove(e, o) {
+  drag = { type: 'move', o, sx: e.clientX, sy: e.clientY, ox: o.x, oy: o.y, moved: false };
+}
+function startRotate(e, o) {
+  const c = worldToScreen(o.x, o.y);
+  drag = {
+    type: 'rot', o,
+    ang0: Math.atan2(e.clientY - c.y, e.clientX - c.x),
+    rot0: o.rot,
+  };
+}
+function startScale(e, o) {
+  const c = worldToScreen(o.x, o.y);
+  drag = {
+    type: 'scale', o,
+    d0: Math.max(8, Math.hypot(e.clientX - c.x, e.clientY - c.y)),
+    s0: o.scale,
+  };
+}
+function startDraw(e, o) {
+  const w = screenToWorld(e.clientX, e.clientY);
+  const l = worldToLocal(o, w.x, w.y);
+  const st = { c: S.inkColor, w: S.inkW, p: [r2(l.x), r2(l.y)] };
+  o.ink.push(st);
+  drag = { type: 'draw', o, st, last: l };
+  renderInk(o);
+}
+function startErase(e, o) {
+  drag = { type: 'erase', o };
+  eraseAt(e, o);
+}
+const r2 = v => Math.round(v * 10) / 10;
+
+function onPointerMove(e) {
+  if (e.pointerType === 'touch' && activeTouches.has(e.pointerId)) {
+    activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activeTouches.size >= 2) {
+      updatePinch();
+      return;
+    }
+  }
+  if (!drag) return;
+  const z = S.view.z;
+
+  switch (drag.type) {
+    case 'pan':
+      S.view.x = drag.vx + (e.clientX - drag.sx);
+      S.view.y = drag.vy + (e.clientY - drag.sy);
+      applyView();
+      break;
+
+    case 'move': {
+      const o = drag.o;
+      o.x = drag.ox + (e.clientX - drag.sx) / z;
+      o.y = drag.oy + (e.clientY - drag.sy) / z;
+      drag.moved = true;
+      place(o);
+      break;
+    }
+
+    case 'rot': {
+      const o = drag.o;
+      const c = worldToScreen(o.x, o.y);
+      const ang = Math.atan2(e.clientY - c.y, e.clientX - c.x);
+      let r = drag.rot0 + (ang - drag.ang0) * 180 / Math.PI;
+      if (e.shiftKey) r = Math.round(r / 15) * 15;
+      o.rot = r;
+      place(o);
+      break;
+    }
+
+    case 'scale': {
+      const o = drag.o;
+      const c = worldToScreen(o.x, o.y);
+      const d = Math.max(8, Math.hypot(e.clientX - c.x, e.clientY - c.y));
+      o.scale = clamp(drag.s0 * d / drag.d0, 0.05, 12);
+      place(o);
+      break;
+    }
+
+    case 'draw': {
+      const o = drag.o;
+      const w = screenToWorld(e.clientX, e.clientY);
+      const l = worldToLocal(o, w.x, w.y);
+      const st = drag.st;
+      const n = st.p.length;
+      const dx = l.x - st.p[n - 2], dy = l.y - st.p[n - 1];
+      if (dx * dx + dy * dy < 1.2) break;
+      st.p.push(r2(l.x), r2(l.y));
+      renderInk(o);
+      break;
+    }
+
+    case 'erase':
+      eraseAt(e, drag.o);
+      break;
+  }
+}
+
+function eraseAt(e, o) {
+  const w = screenToWorld(e.clientX, e.clientY);
+  const l = worldToLocal(o, w.x, w.y);
+  const tol = 10 / (o.scale * S.view.z);
+  let hit = -1;
+  for (let i = o.ink.length - 1; i >= 0; i--) {
+    const st = o.ink[i];
+    const r = tol + st.w / 2;
+    for (let j = 0; j < st.p.length; j += 2) {
+      const dx = st.p[j] - l.x, dy = st.p[j + 1] - l.y;
+      if (dx * dx + dy * dy <= r * r) { hit = i; break; }
+    }
+    if (hit >= 0) break;
+  }
+  if (hit >= 0) { o.ink.splice(hit, 1); renderInk(o); }
+}
+
+function onPointerUp(e) {
+  const wasPinching = !!pinch;
+  if (e.pointerType === 'touch') {
+    activeTouches.delete(e.pointerId);
+    if (activeTouches.size < 2) pinch = null;
+    if (wasPinching && activeTouches.size === 1) {
+      // Continue naturally as a one-finger canvas pan after lifting one finger.
+      resumeOneFingerPan();
+      return;
+    }
+    if (activeTouches.size === 0 && wasPinching) {
+      drag = null;
+      document.body.style.cursor = '';
+      return;
+    }
+  }
+
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  document.body.style.cursor = '';
+
+  if (d.type === 'move' && d.moved) {
+    const o = d.o;
+    if (o.type === 'image') tryAttach(o);
+    scheduleSave();
+  }
+  if (d.type === 'rot' || d.type === 'scale') scheduleSave();
+  if (d.type === 'draw') scheduleSave();
+}
+
+function tryAttach(imgObj) {
+  const sheets = S.objects.filter(o => o.type === 'sheet' && o !== imgObj);
+  const hit = sheets.find(s => {
+    const l = worldToLocal(s, imgObj.x, imgObj.y);
+    return l.x >= 0 && l.x <= s.w && l.y >= 0 && l.y <= s.h;
+  });
+  if (!hit) return;
+  hit.attached = hit.attached || [];
+  if (!hit.attached.includes(imgObj.id)) {
+    hit.attached.push(imgObj.id);
+    refreshClip(hit);
+    flash('Attached to sheet');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   TEXT EDITING
+   ══════════════════════════════════════════════════════════ */
+function enterEdit(o) {
+  if (o.type !== 'sheet') return;
+  S.objects.forEach(x => { if (x !== o && x.editing) exitEdit(x); });
+  o.editing = true;
+  const t = o.el.querySelector('.txt');
+  t.contentEditable = 'true';
+  t.focus();
+  const r = document.createRange();
+  r.selectNodeContents(t); r.collapse(false);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  place(o);
+}
+function exitEdit(o) {
+  o.editing = false;
+  const t = o.el.querySelector('.txt');
+  t.contentEditable = 'false';
+  o.text = t.innerText;
+  place(o);
+  scheduleSave();
+}
+
+/* ══════════════════════════════════════════════════════════
+   ZOOM / PAN INPUT
+   ══════════════════════════════════════════════════════════ */
+function onWheel(e) {
+  if (e.target.closest('.txt') && S.sel && S.sel.editing) return;
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0016));
+  const z = clamp(S.view.z * factor, 0.06, 8);
+  const k = z / S.view.z;
+  S.view.x = e.clientX - (e.clientX - S.view.x) * k;
+  S.view.y = e.clientY - (e.clientY - S.view.y) * k;
+  S.view.z = z;
+  applyView();
+}
+
+/* ══════════════════════════════════════════════════════════
+   IMAGE INGEST
+   ══════════════════════════════════════════════════════════ */
+function sniff(b) {
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';
+  if (b.length > 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
+  return null;
+}
+
+async function ingestImage(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const kind = sniff(buf);
+  if (!kind) throw new Error('Unsupported image type');
+
+  const bmp = await createImageBitmap(new Blob([buf], { type: kind }));
+  const MAX = 2400;
+  const s = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * s));
+  const h = Math.max(1, Math.round(bmp.height * s));
+
+  const cv = new OffscreenCanvas(w, h);
+  cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  if (bmp.close) bmp.close();
+
+  // Re-encode: strips EXIF/GPS, neutralises any embedded junk.
+  const blob = await cv.convertToBlob({ type: 'image/webp', quality: 0.9 });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+
+  const id = uid();
+  const { iv, ct } = await seal(S.key, S.headerBase, 'asset:' + id, bytes);
+  const asset = {
+    id, kind: 'image', mime: 'image/webp', w, h,
+    iv, ct, url: URL.createObjectURL(blob),
+  };
+  S.assets.set(id, asset);
+  return asset;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LIGHTBOX
+   ══════════════════════════════════════════════════════════ */
+function openLightbox(sheet) {
+  const ids = sheet.attached || [];
+  const inner = $('#lbInner');
+  inner.innerHTML = '';
+  if (!ids.length) { flash('No images attached'); return; }
+  for (const id of ids) {
+    const o = byId(id);
+    const a = o && S.assets.get(o.assetId);
+    if (!a || !a.url) continue;
+    const img = new Image();
+    img.src = a.url;
+    img.alt = '';
+    inner.appendChild(img);
+  }
+  $('#lightbox').classList.remove('hidden');
+}
+
+/* ══════════════════════════════════════════════════════════
+   UI HELPERS
+   ══════════════════════════════════════════════════════════ */
+let statusTimer = null;
+function flash(msg) {
+  const s = $('#status');
+  s.textContent = msg;
+  s.classList.add('show');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => s.classList.remove('show'), 1700);
+}
+
+function setMode(m) {
+  S.mode = m;
+  document.body.classList.toggle('marker', m !== 'select');
+  $('#btnMarker').classList.toggle('on', m === 'marker');
+  $('#btnErase').classList.toggle('on', m === 'erase');
+  for (const o of S.objects) place(o);
+}
+
+/* ══════════════════════════════════════════════════════════
+   DOSSIER LIFECYCLE
+   ══════════════════════════════════════════════════════════ */
+function installDossier(manifest, assets) {
+  stage().innerHTML = '';
+  S.objects = [];
+  S.assets = assets;
+  S.savedAssetIds = new Set(assets.keys());
+  S.zTop = 1;
+  S.sel = null;
+  S.name = manifest.name || 'Untitled';
+  $('#title').value = S.name;
+
+  for (const m of manifest.objects) {
+    const o = Object.assign({}, m);
+    o.ink = o.ink || [];
+    o.attached = o.attached || [];
+    o.el = null;
+    o.editing = false;
+    S.objects.push(o);
+    buildObj(o);
+    if (o.z > S.zTop) S.zTop = o.z;
+  }
+}
+
+function enterApp() {
+  $('#landing').classList.add('hidden');
+  $('#gate').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  S.view = { x: 0, y: 0, z: 1 };
+  applyView();
+  const h = $('#hint');
+  h.classList.remove('gone');
+  setTimeout(() => h.classList.add('gone'), 6000);
+}
+
+function leaveApp() {
+  S.key = null;
+  S.id = null;
+  S.objects = [];
+  for (const a of S.assets.values()) if (a.url) URL.revokeObjectURL(a.url);
+  S.assets = new Map();
+  S.savedAssetIds = new Set();
+  stage().innerHTML = '';
+  $('#app').classList.add('hidden');
+  $('#landing').classList.remove('hidden');
+  refreshLanding();
+}
+
+/* ----- create ----- */
+async function createFlow() {
+  let pass;
+  try {
+    pass = await askPass({
+      title: 'Create dossier',
+      sub: 'Choose a passphrase. There is no recovery — if you lose it, the dossier is gone forever.',
+      confirm: true, ok: 'Create',
+    });
+  } catch { return; }
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const fileId = crypto.getRandomValues(new Uint8Array(16));
+  const iterations = ITER_DEFAULT;
+
+  S.id = uid();
+  S.createdAt = Date.now();
+  S.headerBase = buildHeaderBase(iterations, salt, fileId);
+  S.key = await deriveKey(pass, salt, iterations);
+  S.objects = [];
+  S.assets = new Map();
+  S.savedAssetIds = new Set();
+  S.zTop = 1;
+  S.sel = null;
+  S.name = 'Untitled';
+  $('#title').value = S.name;
+  stage().innerHTML = '';
+
+  const c = viewCenterWorld();
+  addSheet(c.x, c.y);
+  enterApp();
+  await save();
+}
+
+/* ----- unlock a saved record ----- */
+async function openSavedFlow(rec) {
+  let pass;
+  try {
+    pass = await askPass({
+      title: 'Unlock dossier',
+      sub: 'Enter the passphrase for this dossier.',
+      ok: 'Unlock',
+    });
+  } catch { return; }
+
+  try {
+    const aadBase = rec.header.slice(0, 44);
+    const iterations = rd32(rec.header, 8);
+    const salt = rec.header.slice(12, 28);
+    const key = await deriveKey(pass, salt, iterations);
+    const plain = await open(key, aadBase, '', rec.manifestIv, rec.manifestCt);
+    const manifest = JSON.parse(dec.decode(plain));
+
+    const metas = new Map(manifest.assets.map(a => [a.id, a]));
+    const records = await idbAssetsOf(rec.id);
+    const assets = new Map();
+
+    for (const r of records) {
+      const meta = metas.get(r.assetId);
+      if (!meta) continue;
+      const bytes = await open(key, aadBase, 'asset:' + r.assetId, r.iv, r.ct);
+      const blob = new Blob([bytes], { type: meta.mime });
+      assets.set(r.assetId, {
+        id: r.assetId, kind: meta.kind, mime: meta.mime, w: meta.w, h: meta.h,
+        iv: r.iv, ct: r.ct, url: URL.createObjectURL(blob),
+      });
+    }
+
+    S.key = key;
+    S.id = rec.id;
+    S.createdAt = rec.createdAt;
+    S.headerBase = aadBase;
+    installDossier(manifest, assets);
+    enterApp();
+  } catch (err) {
+    console.error(err);
+    alert('Could not unlock — wrong passphrase or corrupted data.');
+  }
+}
+
+/* ----- import a .dossier file ----- */
+async function importFlow(file) {
+  let pass;
+  try {
+    pass = await askPass({
+      title: 'Import dossier',
+      sub: 'Enter the passphrase this dossier was exported with.',
+      ok: 'Import',
+    });
+  } catch { return; }
+
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const h = parseHeader(buf);
+    const key = await deriveKey(pass, h.salt, h.iterations);
+
+    const mStart = 60;
+    const mEnd = 60 + h.manifestCtLen;
+    const plain = await open(key, h.aadBase, '', h.manifestIv, buf.slice(mStart, mEnd));
+    const manifest = JSON.parse(dec.decode(plain));
+
+    let off = mEnd;
+    const assets = new Map();
+    for (const meta of manifest.assets) {
+      if (off + 12 > buf.length) throw new Error('Truncated asset table');
+      const iv = buf.slice(off, off + 12); off += 12;
+      const ct = buf.slice(off, off + meta.ctLen); off += meta.ctLen;
+      if (ct.length !== meta.ctLen) throw new Error('Truncated asset');
+      const bytes = await open(key, h.aadBase, 'asset:' + meta.id, iv, ct);
+      const blob = new Blob([bytes], { type: meta.mime });
+      assets.set(meta.id, {
+        id: meta.id, kind: meta.kind, mime: meta.mime, w: meta.w, h: meta.h,
+        iv, ct, url: URL.createObjectURL(blob),
+      });
+    }
+
+    // Fresh identity so this import becomes its own local dossier.
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const fileId = crypto.getRandomValues(new Uint8Array(16));
+    // Re-key with the same passphrase under a new salt.
+    S.key = await deriveKey(pass, salt, ITER_DEFAULT);
+    S.headerBase = buildHeaderBase(ITER_DEFAULT, salt, fileId);
+    S.id = uid();
+    S.createdAt = manifest.created || Date.now();
+
+    // Re-encrypt assets under the new key/header.
+    const reenc = new Map();
+    for (const [id, a] of assets) {
+      const bytes = await open(key, h.aadBase, 'asset:' + id, a.iv, a.ct);
+      const sealed = await seal(S.key, S.headerBase, 'asset:' + id, bytes);
+      reenc.set(id, Object.assign({}, a, { iv: sealed.iv, ct: sealed.ct }));
+    }
+
+    installDossier(manifest, reenc);
+    enterApp();
+    await save();
+    flash('Imported');
+  } catch (err) {
+    console.error(err);
+    alert('Import failed — wrong passphrase or not a valid .dossier file.');
+  }
+}
+
+/* ----- export ----- */
+async function exportFlow() {
+  if (!S.key) return;
+  try {
+    const manifest = buildManifest();
+    const plain = enc.encode(JSON.stringify(manifest));
+    const { iv, ct } = await seal(S.key, S.headerBase, '', plain);
+
+    const header = new Uint8Array(60);
+    header.set(S.headerBase, 0);
+    header.set(u32le(ct.length), 44);
+    header.set(iv, 48);
+
+    const parts = [header, ct];
+    for (const a of S.assets.values()) {
+      parts.push(a.iv, a.ct);
+    }
+    const blob = new Blob(parts, { type: 'application/octet-stream' });
+
+    const safe = (S.name || 'dossier').replace(/[^\w\-. ]+/g, '_').trim() || 'dossier';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safe + '.dossier';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+
+    await save();
+    flash('Exported ' + fmtSize(blob.size));
+  } catch (e) {
+    console.error(e);
+    flash('Export failed');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   PASSPHRASE MODAL
+   ══════════════════════════════════════════════════════════ */
+function askPass({ title, sub, confirm, ok }) {
+  return new Promise((resolve, reject) => {
+    const g = $('#gate');
+    $('#gateTitle').textContent = title;
+    $('#gateSub').textContent = sub || '';
+    $('#gateOk').textContent = ok || 'Unlock';
+    $('#gatePass').value = '';
+    $('#gatePass2').value = '';
+    $('#gatePass2').classList.toggle('hidden', !confirm);
+    $('#gateErr').textContent = '';
+    g.classList.remove('hidden');
+    setTimeout(() => $('#gatePass').focus(), 40);
+
+    const cleanup = () => {
+      g.classList.add('hidden');
+      $('#gateForm').onsubmit = null;
+      $('#gateCancel').onclick = null;
+    };
+    $('#gateCancel').onclick = () => { cleanup(); reject(new Error('cancelled')); };
+    $('#gateForm').onsubmit = ev => {
+      ev.preventDefault();
+      const p = $('#gatePass').value;
+      if (p.length < 8) { $('#gateErr').textContent = 'Use at least 8 characters.'; return; }
+      if (confirm && p !== $('#gatePass2').value) { $('#gateErr').textContent = 'Passphrases do not match.'; return; }
+      cleanup();
+      resolve(p);
+    };
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   LANDING LIST
+   ══════════════════════════════════════════════════════════ */
+async function refreshLanding() {
+  let recs = [];
+  try { recs = await idbAll('dossiers'); } catch { /* ignore */ }
+  recs.sort((a, b) => b.updatedAt - a.updatedAt);
+
+  const list = $('#savedList');
+  list.innerHTML = '';
+  if (!recs.length) return;
+
+  list.appendChild(el('div', 'saved-h', 'Saved dossiers'));
+
+  for (const r of recs) {
+    const row = el('div', 'saved-row');
+    const meta = el('span', 'meta');
+    const b = el('b', null, 'Locked dossier');
+    meta.appendChild(b);
+    meta.appendChild(document.createElement('br'));
+    const small = el('small', null,
+      new Date(r.updatedAt).toLocaleString() + ' · ' + fmtSize(r.size || 0));
+    meta.appendChild(small);
+
+    row.appendChild(el('span', 'dot', '🔒'));
+    row.appendChild(meta);
+
+    const del = el('button', 'del', '✕');
+    del.title = 'Delete';
+    del.onclick = async ev => {
+      ev.stopPropagation();
+      if (!confirm('Delete this dossier permanently? This cannot be undone.')) return;
+      await idbDeleteDossier(r.id);
+      refreshLanding();
+    };
+    row.appendChild(del);
+
+    row.onclick = () => openSavedFlow(r);
+    list.appendChild(row);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   WIRING
+   ══════════════════════════════════════════════════════════ */
+function wire() {
+  // landing
+  $('#btnCreate').onclick = () => createFlow();
+  $('#btnImport').onclick = () => $('#fileImport').click();
+  $('#fileImport').onchange = ev => {
+    const f = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (f) importFlow(f);
+  };
+
+  // toolbar
+  $('#btnSheet').onclick = () => {
+    const c = viewCenterWorld();
+    addSheet(c.x + (Math.random() - 0.5) * 120, c.y + (Math.random() - 0.5) * 120);
+  };
+  $('#btnImage').onclick = () => $('#fileImage').click();
+  $('#fileImage').onchange = async ev => {
+    const files = Array.from(ev.target.files || []);
+    ev.target.value = '';
+    if (!files.length) return;
+    const c = viewCenterWorld();
+    let i = 0;
+    for (const f of files) {
+      try {
+        const asset = await ingestImage(f);
+        addImageObj(asset, c.x + i * 40, c.y + i * 40);
+        i++;
+      } catch (err) {
+        console.warn(err);
+        flash('Skipped: ' + f.name);
+      }
+    }
+    scheduleSave();
+  };
+
+  $('#btnMarker').onclick = () => setMode(S.mode === 'marker' ? 'select' : 'marker');
+  $('#btnErase').onclick = () => setMode(S.mode === 'erase' ? 'select' : 'erase');
+
+  $('#btnReset').onclick = () => { S.view = { x: 0, y: 0, z: 1 }; applyView(); };
+  $('#btnExport').onclick = () => exportFlow();
+  $('#btnLock').onclick = () => {
+    if (!confirm('Lock this dossier? It stays saved locally, encrypted.')) return;
+    save().then(leaveApp);
+  };
+
+  $('#title').addEventListener('input', ev => { S.name = ev.target.value; scheduleSave(); });
+
+  // swatches
+  const COLORS = ['#e0402f', '#e8b500', '#2f9e44', '#1c7ed6', '#ffffff', '#141414'];
+  const sw = $('#swatches');
+  COLORS.forEach((c, i) => {
+    const b = el('div', 'sw' + (i === 0 ? ' on' : ''));
+    b.style.background = c;
+    if (c === '#ffffff') b.style.borderColor = '#444';
+    b.onclick = () => {
+      S.inkColor = c;
+      sw.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      if (S.mode === 'select') setMode('marker');
+    };
+    sw.appendChild(b);
+  });
+
+  // lightbox
+  $('#lbClose').onclick = () => $('#lightbox').classList.add('hidden');
+  $('#lightbox').addEventListener('click', ev => {
+    if (ev.target.id === 'lightbox') $('#lightbox').classList.add('hidden');
+  });
+
+  // canvas events
+  const w = $('#world');
+  w.addEventListener('pointerdown', onPointerDown);
+  w.addEventListener('dblclick', ev => {
+    const objEl = ev.target.closest('.obj');
+    if (!objEl) return;
+    const o = byId(objEl.dataset.id);
+    if (o && o.type === 'sheet') enterEdit(o);
+  });
+  w.addEventListener('wheel', onWheel, { passive: false });
+
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+
+  // keyboard
+  window.addEventListener('keydown', ev => {
+    if (ev.code === 'Space' && !isTyping(ev)) { spaceDown = true; ev.preventDefault(); }
+    if (isTyping(ev)) return;
+
+    if (ev.key === 'Escape') { deselect(); setMode('select'); }
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && S.sel) {
+      ev.preventDefault();
+      removeObj(S.sel);
+    }
+    if (ev.key === 'm' || ev.key === 'M') setMode(S.mode === 'marker' ? 'select' : 'marker');
+    if (ev.key === 'e' || ev.key === 'E') setMode(S.mode === 'erase' ? 'select' : 'erase');
+  });
+  window.addEventListener('keyup', ev => {
+    if (ev.code === 'Space') spaceDown = false;
+  });
+
+  // warn on unload
+  window.addEventListener('beforeunload', ev => {
+    if (saveTimer && S.key) { ev.preventDefault(); ev.returnValue = ''; }
+  });
+}
+
+function isTyping(ev) {
+  const t = ev.target;
+  return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════════════════ */
+wire();
+setMode('select');
+refreshLanding();
+
+// expose a tiny debug handle
+window.__dossier = { S, save, exportFlow };
+
+})();
+</script>
+</body>
+</html>
